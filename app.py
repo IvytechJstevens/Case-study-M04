@@ -1,11 +1,13 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///books.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+CORS(app)  # Enable CORS support
 
 class Book(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -21,9 +23,14 @@ with app.app_context():
 @app.route('/books', methods=['POST'])
 def create_book():
     data = request.get_json()
+
+    if not all(key in data for key in ('book_name', 'author', 'publisher')):
+        return jsonify({'error': 'Incomplete data. Please provide book_name, author, and publisher.'}), 400
+
     new_book = Book(book_name=data['book_name'], author=data['author'], publisher=data['publisher'])
     db.session.add(new_book)
     db.session.commit()
+
     return jsonify({'message': 'Book created successfully'}), 201
 
 @app.route('/books', methods=['GET'])
@@ -43,9 +50,14 @@ def get_book(book_id):
 def update_book(book_id):
     book = Book.query.get_or_404(book_id)
     data = request.get_json()
-    book.book_name = data['book_name']
-    book.author = data['author']
-    book.publisher = data['publisher']
+
+    if 'book_name' in data:
+        book.book_name = data['book_name']
+    if 'author' in data:
+        book.author = data['author']
+    if 'publisher' in data:
+        book.publisher = data['publisher']
+
     db.session.commit()
     return jsonify({'message': 'Book updated successfully'})
 
